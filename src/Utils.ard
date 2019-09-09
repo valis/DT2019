@@ -1,0 +1,1 @@
+\func idp {A : \Type} {a : A} : a = a => path (\lam _ => a)
