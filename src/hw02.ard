@@ -1,5 +1,5 @@
-\import lect02 \hiding (+,*,-)
-\open Nat -- Здесь лежат + и *.
+\import lect02 \hiding (+,*)
+\open Nat \hiding (-,div) -- Здесь лежат + и *.
 
 -- I. Задания на рекурсивные определения.
 

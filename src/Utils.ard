@@ -1,1 +1,41 @@
+-- Равенства
+
 \func idp {A : \Type} {a : A} : a = a => path (\lam _ => a)
+
+\func pmap {A B : \Type} (f : A -> B) {a a' : A} (p : a = a') : f a = f a' => path (\lam i => f (p @ i))
+
+-- Either
+
+\data Either (A B : \Type) | inl A | inr B
+
+-- Bool
+
+\data Bool | true | false
+
+\func not (x : Bool) : Bool
+  | true => false
+  | false => true
+
+\func \infixr 3 && (x y : Bool) : Bool \elim x
+  | true => y
+  | false => false
+
+\func \infixr 2 || (x y : Bool) : Bool \elim x
+  | true => true
+  | false => y
+
+-- List
+
+\data List (A : \Type) | nil | cons A (List A)
+
+\func \infixl 6 ++ {A : \Type} (xs ys : List A) : List A \elim xs
+  | nil => ys
+  | cons x xs => cons x (xs ++ ys)
+
+-- Misc
+
+\func \infix 4 < (x y : Nat) : Bool
+  | 0, 0 => false
+  | 0, suc y => true
+  | suc x, 0 => false
+  | suc x, suc y => x < y
