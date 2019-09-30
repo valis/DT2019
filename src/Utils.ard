@@ -4,6 +4,9 @@
 
 \func pmap {A B : \Type} (f : A -> B) {a a' : A} (p : a = a') : f a = f a' => path (\lam i => f (p @ i))
 
+\func transport {A : \Type} (B : A -> \Type) {a a' : A} (p : a = a') (b : B a) : B a'
+    => coe (\lam i => B (p @ i)) b right
+
 -- Either
 
 \data Either (A B : \Type) | inl A | inr B
@@ -31,6 +34,16 @@
 \func \infixl 6 ++ {A : \Type} (xs ys : List A) : List A \elim xs
   | nil => ys
   | cons x xs => cons x (xs ++ ys)
+
+-- Empty
+
+\data Empty
+
+\func absurd {A : \Type} (e : Empty) : A
+
+-- Maybe
+
+\data Maybe (A : \Type) | nothing | just A
 
 -- Misc
 

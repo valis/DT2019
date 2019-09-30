@@ -1,0 +1,98 @@
+\import Utils
+\open Nat
+
+-- 1. Рекурсивное определение vec, head, tail.
+
+\func vec (A : \Type) (n : Nat) : \Type => {?}
+
+\func head {A : \Type} (n : Nat) (xs : vec A (suc n)) => {?}
+
+\func tail {A : \Type} (n : Nat) (xs : vec A (suc n)) => {?}
+
+-- 2. Индуктивное определиние Vec, head, tail, append, length.
+
+\data Vec (A : \Type) (n : Nat)
+
+\func Head {A : \Type} {n : Nat} (xs : Vec A (suc n)) : A
+
+\func Tail {A : \Type} {n : Nat} (xs : Vec A (suc n)) : Vec A n
+
+\func append {A : \Type} {n m : Nat} (xs : Vec A n) (ys : Vec A m) : Vec A (m + n)
+
+-- Очень полезная функция.
+\func length {A : \Type} {n : Nat} (xs : Vec A n) => {?}
+
+-- 3. Fin, toNat, lookup.
+
+-- Тип n-элементных множеств можно определить различными способами.
+-- Например, мы можем определить его как подтип натуральных чисел:
+-- \func fin (n : Nat) => \Sigma (x : Nat) (T (x < n))
+
+\func Fin' (n : Nat) : \Type => {?}
+
+-- Конструкторы принимают параметры типа данных в качестве неявных аргументов.
+\func emptyList => nil {Nat}
+
+-- Еще его можно определить индуктивно:
+\data Fin (n : Nat)
+
+-- Fin 0 -- пустой тип.
+\func Fin-absurd {A : \Type} (x : Fin 0) : A
+
+-- \func fin0 : Fin 3 => fzero
+-- \func fin1 : Fin 3 => fsuc fzero
+-- \func fin2 : Fin 3 => fsuc (fsuc fzero)
+-- \func fin3 : Fin 3 => fsuc (fsuc (fsuc fzero))
+
+-- В Fin 3 не более 3 элементов.
+-- \func atMost3 (x : Fin 3) : Either (x = fin0) (Either (x = fin1) (x = fin2)) => {?}
+
+\func toNat {n : Nat} (x : Fin n) : Nat => {?}
+
+-- Безопасный lookup.
+\func lookup {A : \Type} {n : Nat} (xs : Vec A n) (i : Fin n) : A => {?}
+
+-- 4. Симметричность, транзитивность, принцип Лейбница, pmap через него.
+
+-- Принцип Лейбница говорит, что если a и a' обладают одними и теми же свойствами, то они равны.
+-- Его легко доказать.
+\func Leibniz {A : \Type} {a a' : A}
+  (f : \Pi (P : A -> \Type) -> \Sigma (P a -> P a') (P a' -> P a)) : a = a'
+  => {?}
+
+-- Обратный принцип Лейбница (который мы тоже будем называть принципом Лейбница) говорит, что если a = a', то они обладают одними и теми же свойствами, т.е. если верно B a, то верно B a'.
+-- \func transport {A : \Type} (B : A -> \Type) {a a' : A} (p : a = a') (b : B a) : B a'
+
+-- Используя принцип Лейбница, легко доказать (почти) все свойства равенства.
+-- Симметричность
+\func sym {A : \Type} {a a' : A} (p : a = a') : a' = a
+    => {?}
+
+-- Транзитивность
+\func trans {A : \Type} {a a' a'' : A} (p : a = a') (q : a' = a'') : a = a''
+    => {?}
+
+-- Конгруэнтность
+\func pmap' {A B : \Type} (f : A -> B) {a a' : A} (p : a = a') : f a = f a'
+    => {?}
+
+-- 5. Определение =.
+
+-- В прелюдии определен тип I с двумя конструкторами left и right, но в отличии от обычных \data эти два конструктора равны.
+-- Это означает, что для I нельзя использовать паттерн матчинг, так как иначе было бы легко вывести противоречие.
+-- Так как left и right равны, то некоторые a : A и a' : A равны тогда и только тогда, когда существует функция f : I -> A, такая что f left == a и f right == a', где == -- это вычислительное равенство.
+-- Тип a = {A} a' определен как тип функций I -> A, удовлетворяющих этому свойству.
+
+-- Чтобы доказать, что a = a, можно взять константную функцию \lam _ => a : I -> A.
+\func idp_ {A : \Type} {a : A} : a = a => path (\lam _ => a)
+
+-- Если f : A -> B и g : I -> A, то их композиция дает нам pmap.
+-- Действительно g доказывает, что g left = g right, а композиция f и g доказывает, что f (g left) = f (g right).
+\func pmap_ {A B : \Type} (f : A -> B) {a a' : A} (p : a = a') : f a = f a'
+    => path (\lam i => f (p @ i))
+
+-- Функция @, определенная в прелюдии, -- это просто обратная функция к конструктору path.
+-- path (f : I -> A) : f left = f right
+-- @ (p : a = a') (i : I) : A
+-- path f @ i == f i -- бета-эквивалентность
+-- path (\lam i => p @ i) == p -- эта-эквивалентность.
