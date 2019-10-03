@@ -3,24 +3,38 @@
 
 -- 1. Рекурсивное определение vec, head, tail.
 
-\func vec (A : \Type) (n : Nat) : \Type => {?}
+\func vec (A : \Type) (n : Nat) : \Type \elim n
+  | 0 => \Sigma
+  | suc n => \Sigma A (vec A n)
 
-\func head {A : \Type} (n : Nat) (xs : vec A (suc n)) => {?}
+\func head {A : \Type} (n : Nat) (xs : vec A (suc n)) => xs.1
 
-\func tail {A : \Type} (n : Nat) (xs : vec A (suc n)) => {?}
+\func tail {A : \Type} (n : Nat) (xs : vec A (suc n)) => xs.2
 
 -- 2. Индуктивное определиние Vec, head, tail, append, length.
 
-\data Vec (A : \Type) (n : Nat)
+\data Vec (A : \Type) (n : Nat) \elim n
+  | 0 => fnil
+  | suc n => fcons A (Vec A n)
 
-\func Head {A : \Type} {n : Nat} (xs : Vec A (suc n)) : A
+\func Head {A : \Type} {n : Nat} (xs : Vec A (suc n)) : A \elim xs
+  | fcons x _ => x
 
-\func Tail {A : \Type} {n : Nat} (xs : Vec A (suc n)) : Vec A n
+\func Tail {A : \Type} {n : Nat} (xs : Vec A (suc n)) : Vec A n \elim xs
+  | fcons _ xs => xs
 
-\func append {A : \Type} {n m : Nat} (xs : Vec A n) (ys : Vec A m) : Vec A (m + n)
+\data Maybe (A : \Type) | nothing | just A
+
+\func first {A : \Type} {n : Nat} (xs : Vec A n) : Maybe A \elim n, xs
+  | 0, fnil => nothing
+  | suc n, fcons x xs => just x
+
+\func append {A : \Type} {n m : Nat} (xs : Vec A n) (ys : Vec A m) : Vec A (m + n) \elim n, xs
+  | 0, fnil => ys
+  | suc _, fcons x xs => fcons x (append xs ys)
 
 -- Очень полезная функция.
-\func length {A : \Type} {n : Nat} (xs : Vec A n) => {?}
+\func length {A : \Type} {n : Nat} (xs : Vec A n) => n
 
 -- 3. Fin, toNat, lookup.
 
@@ -28,29 +42,42 @@
 -- Например, мы можем определить его как подтип натуральных чисел:
 -- \func fin (n : Nat) => \Sigma (x : Nat) (T (x < n))
 
-\func Fin' (n : Nat) : \Type => {?}
+\data Empty
+
+\func Fin' (n : Nat) : \Set0
+  | 0 => Empty
+  | suc n => Maybe (Fin' n)
 
 -- Конструкторы принимают параметры типа данных в качестве неявных аргументов.
 \func emptyList => nil {Nat}
 
 -- Еще его можно определить индуктивно:
-\data Fin (n : Nat)
+\data Fin (n : Nat) \with
+  | suc n => { fzero | fsuc (Fin n) }
 
 -- Fin 0 -- пустой тип.
-\func Fin-absurd {A : \Type} (x : Fin 0) : A
+\func absurd {A : \Type} (x : Fin 0) : A
 
--- \func fin0 : Fin 3 => fzero
--- \func fin1 : Fin 3 => fsuc fzero
--- \func fin2 : Fin 3 => fsuc (fsuc fzero)
+\func fin0 : Fin 3 => fzero
+\func fin1 : Fin 3 => fsuc fzero
+\func fin2 : Fin 3 => fsuc (fsuc fzero)
 -- \func fin3 : Fin 3 => fsuc (fsuc (fsuc fzero))
 
 -- В Fin 3 не более 3 элементов.
--- \func atMost3 (x : Fin 3) : Either (x = fin0) (Either (x = fin1) (x = fin2)) => {?}
+\func atMost3 (x : Fin 3) : Either (x = fin0) (Either (x = fin1) (x = fin2)) \elim x
+  | fzero => inl idp
+  | fsuc fzero => inr (inl idp)
+  | fsuc (fsuc fzero) => inr (inr idp)
+  | fsuc (fsuc (fsuc ()))
 
-\func toNat {n : Nat} (x : Fin n) : Nat => {?}
+\func toNat {n : Nat} (x : Fin n) : Nat
+  | {suc _}, fzero => 0
+  | {suc _}, fsuc x => suc (toNat x)
 
 -- Безопасный lookup.
-\func lookup {A : \Type} {n : Nat} (xs : Vec A n) (i : Fin n) : A => {?}
+\func lookup {A : \Type} {n : Nat} (xs : Vec A n) (i : Fin n) : A \elim n, xs, i
+  | suc _, fcons x _, fzero => x
+  | suc _, fcons _ xs, fsuc i => lookup xs i
 
 -- 4. Симметричность, транзитивность, принцип Лейбница, pmap через него.
 
@@ -58,23 +85,24 @@
 -- Его легко доказать.
 \func Leibniz {A : \Type} {a a' : A}
   (f : \Pi (P : A -> \Type) -> \Sigma (P a -> P a') (P a' -> P a)) : a = a'
-  => {?}
+  => (f (\lam x => a = x)).1 idp
 
 -- Обратный принцип Лейбница (который мы тоже будем называть принципом Лейбница) говорит, что если a = a', то они обладают одними и теми же свойствами, т.е. если верно B a, то верно B a'.
--- \func transport {A : \Type} (B : A -> \Type) {a a' : A} (p : a = a') (b : B a) : B a'
+\func transport {A : \Type} (B : A -> \Type) {a a' : A} (p : a = a') (b : B a) : B a'
+    => coe (\lam i => B (p @ i)) b right
 
 -- Используя принцип Лейбница, легко доказать (почти) все свойства равенства.
 -- Симметричность
 \func sym {A : \Type} {a a' : A} (p : a = a') : a' = a
-    => {?}
+    => transport (\lam x => x = a) p idp
 
 -- Транзитивность
 \func trans {A : \Type} {a a' a'' : A} (p : a = a') (q : a' = a'') : a = a''
-    => {?}
+    => transport (\lam x => a = x) q p
 
 -- Конгруэнтность
 \func pmap' {A B : \Type} (f : A -> B) {a a' : A} (p : a = a') : f a = f a'
-    => {?}
+    => transport (\lam x => f a = f x) p idp
 
 -- 5. Определение =.
 
@@ -84,11 +112,11 @@
 -- Тип a = {A} a' определен как тип функций I -> A, удовлетворяющих этому свойству.
 
 -- Чтобы доказать, что a = a, можно взять константную функцию \lam _ => a : I -> A.
-\func idp_ {A : \Type} {a : A} : a = a => path (\lam _ => a)
+\func idp {A : \Type} {a : A} : a = a => path (\lam _ => a)
 
 -- Если f : A -> B и g : I -> A, то их композиция дает нам pmap.
 -- Действительно g доказывает, что g left = g right, а композиция f и g доказывает, что f (g left) = f (g right).
-\func pmap_ {A B : \Type} (f : A -> B) {a a' : A} (p : a = a') : f a = f a'
+\func pmap {A B : \Type} (f : A -> B) {a a' : A} (p : a = a') : f a = f a'
     => path (\lam i => f (p @ i))
 
 -- Функция @, определенная в прелюдии, -- это просто обратная функция к конструктору path.
