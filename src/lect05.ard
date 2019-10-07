@@ -1,0 +1,169 @@
+\open Nat
+\import Utils
+
+-- 1. Определение =.
+
+-- В прелюдии определен тип I с двумя конструкторами left и right, но в отличии от обычных \data эти два конструктора равны.
+-- Это означает, что для I нельзя использовать паттерн матчинг, так как иначе было бы легко вывести противоречие.
+-- Так как left и right равны, то некоторые a : A и a' : A равны тогда и только тогда, когда существует функция f : I -> A, такая что f left == a и f right == a', где == -- это вычислительное равенство.
+-- Тип a = {A} a' определен как тип функций I -> A, удовлетворяющих этому свойству.
+
+-- Чтобы доказать, что a = a, можно взять константную функцию \lam _ => a : I -> A.
+\func idp_ {A : \Type} {a : A} : a = a => path (\lam _ => a)
+
+-- Если f : A -> B и g : I -> A, то их композиция дает нам pmap.
+-- Действительно g доказывает, что g left = g right, а композиция f и g доказывает, что f (g left) = f (g right).
+\func pmap_ {A B : \Type} (f : A -> B) {a a' : A} (p : a = a') : f a = f a'
+    => path (\lam i => f (p @ i))
+
+-- Функция @, определенная в прелюдии, -- это просто обратная функция к конструктору path.
+-- path (f : I -> A) : f left = f right
+-- @ (p : a = a') (i : I) : A
+-- path f @ i == f i -- бета-эквивалентность
+-- path (\lam i => p @ i) == p -- эта-эквивалентность.
+
+-- pmap можно определять по разному, но если использовать определение, данное выше, то он будет обладать хорошими вычислительными свойствами.
+-- Например, pmap id = id и pmap (f . g) = pmap f . pmap g, где (.) -- это композиция.
+-- Если определить pmap по другому, то эти равенства тоже будут верны, но не вычислительно, то есть их нельзя будет доказать просто по рефлексивности.
+\func pmap-idp {A : \Type} {a a' : A} (p : a = a') : pmap (\lam x => x) p = p => idp
+
+-- 2. Функциональная экстенсиональность.
+
+-- Функциональная экстенсиональность говорит, что если две функции f и g равны на всех аргументах, то они равны.
+-- Ее легко доказать, используя наше определение равенства.
+\func funExt {A : \Type} (B : A -> \Type) {f g : \Pi (a : A) -> B a}
+    (p : \Pi (a : A) -> f a = g a) : f = g
+    => path (\lam i => \lam a => p a @ i)
+
+-- В большинстве других языков с зависимыми типами ее доказать нельзя.
+-- Ее можно добавить просто как аксиому, то есть функцию без реализации, но аксиомы обычно не любят добавлять, так как это портит вычислительные свойства языка.
+
+-- Например, если мы добавим аксиому исключенного третьего lem, то легко написать константу foo : Nat, которая не будет вычисляться ни в какое конкретное число.
+-- \func lem : \Pi (X : \Type) -> Either X (X -> Empty)
+-- \func foo : Nat => \case lem Nat \with { | Left => 0 | Right => 1 }
+
+-- 3. Элиминаторы.
+
+-- Элиминатор для Bool (рекурсор для Bool -- это просто if).
+\func Bool-elim (P : Bool -> \Type)
+                (t : P true)
+                (f : P false)
+                (x : Bool) : P x \elim x
+  | true => t
+  | false => f
+
+\func Bool-rec (P : \Type)
+               (t : P)
+               (f : P)
+               (x : Bool) : P \elim x
+  | true => t
+  | false => f
+
+-- Элиминатор для Nat
+\func Nat-elim (P : Nat -> \Type)
+               (z : P zero)
+               (s : \Pi (n : Nat) -> P n -> P (suc n))
+               (x : Nat) : P x \elim x
+  | zero => z
+  | suc n => s n (Nat-elim P z s n)
+
+-- Рекурсор для Nat
+\func Nat-rec (P : \Type)
+              (z : P)
+              (s : Nat -> P -> P)
+              (x : Nat) : P \elim x
+  | zero => z
+  | suc n => s n (Nat-rec P z s n)
+
+-- 4. Элиминатор для I.
+
+-- О функции coe, определенной в прелюдии, можно думать как об элиминаторе для I.
+-- Она говорит, что для определения функции над I достаточно определить ее для left.
+-- Для сравнения элиминатор для Bool говорит, что для определения функции над Bool достаточно определить ее для true и false.
+
+{-
+\func coe (P : I -> \Type)
+          (a : P left)
+          (i : I) : P i \elim i
+  | left => a
+-}
+
+-- Используя coe, легко доказать, что любой i : I равен left.
+\func left=i (i : I) : left = i
+  -- | left => idp
+  => coe (\lam i => left = i) idp i
+
+-- 5. coe и transport.
+
+-- Функция coe тесно связана с transport.
+-- Мы определили transport через coe.
+
+-- \func transport {A : \Type} (B : A -> \Type) {a a' : A} (p : a = a') (b : B a) : B a'
+--     => coe (\lam i => B (p @ i)) b right
+-- Пусть B' == \lam i => B (p @ i).
+-- Тогда
+-- B' : I -> \Type
+-- B' left == B a
+-- B' right == B a'
+--
+-- \lam x => coe B' x right : B' left -> B' right
+
+-- В ДЗ нужно будет показать, что через transport определеяется частный случай coe.
+
+-- 6. Доказательства неравенств.
+
+\func T (b : Bool) : \Type
+  | true => \Sigma
+  | false => Empty
+
+-- Чтобы доказать, что true не равно false, достаточно определить функцию T : Bool -> \Type, которая на true равна населенному типу, а на false пустому.
+-- Тогда из true = false легко вывести противоречие, используя transport.
+\func true/=false (p : true = false) : Empty => transport T p ()
+
+-- Мы не можем доказать, что left не равно right, так как мы не можем определить такую функцию для I ни рекурсивно, ни через \data.
+{-
+\func TI (b : I)
+  | left => \Sigma
+  | right => Empty
+-}
+
+-- 7. Коммутативность сложения.
+
+-- transport обладает следующим свойством:
+-- transport B idp b => b
+-- \func transport {A : \Type} (B : A -> \Type) {a a' : A} (p : a = a') (b : B a) : B a'
+--   => coe (\lam i => B (p @ i)) b right
+
+-- Транзитивность в инфиксной форме.
+-- \func \infixr 5 *> {A : \Type} {a a' a'' : A} (p : a = a') (q : a' = a'') : a = a''
+--   => transport (\lam x => a = x) q p
+
+-- Функция *> обладает следующим свойством:
+-- p *> idp => p
+-- Можно определить транзитивность <*, которая будем обладать свойством idp <* p => p, но пока она нам не понадобится.
+
+\func +-assoc (n m k : Nat) : (n + m) + k = n + (m + k) \elim k
+  | 0 => idp
+  | suc k => pmap suc (+-assoc n m k)
+
+\func +-comm (n m : Nat) : n + m = m + n
+  | 0, 0 => idp
+  | 0, suc m => pmap suc (+-comm 0 m)
+  | suc n, 0 => pmap suc (+-comm n 0)
+  | suc n, suc m => pmap suc (+-comm (suc n) m *> pmap suc (sym (+-comm n m)) *> +-comm n (suc m))
+
+-- 8. Equational reasoning, коммутивность сложения через него.
+
+-- Используя equational reasoning, можно то же самое доказательство записать в более читаемой форме.
+\func +-comm' (n m : Nat) : n + m = m + n
+  | 0, 0 => idp
+  | 0, suc m => pmap suc (+-comm' 0 m)
+  | suc n, 0 => pmap suc (+-comm' n 0)
+  | suc n, suc m => pmap suc (
+      suc n + m   ==< +-comm' (suc n) m >==
+      suc (m + n) ==< pmap suc (sym (+-comm' n m)) >==
+      suc (n + m) ==< +-comm' n (suc m) >==
+      suc m + n   `qed)
+
+-- x `f == f x -- постфиксная нотация
+-- x `f` y == f x y -- инфиксная нотация

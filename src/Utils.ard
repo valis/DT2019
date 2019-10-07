@@ -1,3 +1,5 @@
+\open Nat
+
 -- Равенства
 
 \func idp {A : \Type} {a : A} : a = a => path (\lam _ => a)
@@ -6,6 +8,18 @@
 
 \func transport {A : \Type} (B : A -> \Type) {a a' : A} (p : a = a') (b : B a) : B a'
     => coe (\lam i => B (p @ i)) b right
+
+\func \infixr 5 *> {A : \Type} {a a' a'' : A} (p : a = a') (q : a' = a'') : a = a''
+  => transport (\lam x => a = x) q p
+
+\func sym {A : \Type} {a a' : A} (p : a = a') : a' = a
+    => transport (\lam x => x = a) p idp
+
+\func \fix 2 qed {A : \Type} (a : A) : a = a => idp
+
+\func \infixr 1 >== {A : \Type} {a a' a'' : A} (p : a = a') (q : a' = a'') => p *> q
+
+\func \infix 2 ==< {A : \Type} (a : A) {a' : A} (p : a = a') => p
 
 -- Either
 
@@ -34,6 +48,16 @@
 \func \infixl 6 ++ {A : \Type} (xs ys : List A) : List A \elim xs
   | nil => ys
   | cons x xs => cons x (xs ++ ys)
+
+-- Vec
+
+\data Vec (A : \Type) (n : Nat) \elim n
+  | zero => vnil
+  | suc n => vcons A (Vec A n)
+
+\func \infixl 4 v++ {A : \Type} {n m : Nat} (xs : Vec A n) (ys : Vec A m) : Vec A (m + n) \elim n, xs
+  | 0, vnil => ys
+  | suc n, vcons x xs => vcons x (xs v++ ys)
 
 -- Empty
 

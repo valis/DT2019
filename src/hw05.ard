@@ -1,0 +1,71 @@
+\import Utils
+\import lect05
+\open Nat
+
+-- 1. Мы видели как определить transport через coe. Определите частный случай coe через transport.
+--    Можно ли определить transport через coe0?
+--    Верно ли, что эти конструкции взаимообратны в том смысле что, если мы построим transport по coe, а потом coe0 по transport, то получим исходный (частный случай) coe? Верно ли, что они взаимообратны в обратную сторону?
+
+\func coe0 (A : I -> \Type) (a : A left) : A right => {?}
+
+-- 2. Определите функцию B right -> B left.
+
+\func Itr' {B : I -> \Type} (b : B right) : B left => {?}
+
+-- 3. Докажите, что (\lam x => not (not x)) = (\lam x => x).
+
+\func not (b : Bool) : Bool
+  | true => false
+  | false => true
+
+\func notNotId : (\lam x => not (not x)) = (\lam x => x) => {?}
+
+-- 4. Определите факториал через Nat-rec.
+
+-- 5. Докажите ассоциативность сложения для натуральных чисел через Nat-elim.
+
+-- 6. Определите рекурсор и элиминатор для D.
+
+\data D
+  | con1 Nat
+  | con2 D D
+  | con3 (Nat -> D)
+
+-- 7. Определите рекурсор и элиминатор для List.
+
+-- 8. Докажите, что 0 не равно suc x.
+
+\func zero/=suc (x : Nat) (p : 0 = suc x) : Empty => {?}
+
+-- 9. Докажите, что fac не равен suc.
+
+\open Nat(*)
+
+\func fac (n : Nat) : Nat
+  | 0 => 1
+  | suc n => suc n * fac n
+
+\func fac/=suc (p : fac = suc) : Empty => {?}
+
+-- 10. Докажите дистрибутивность умножения над сложением для натуральных чисел.
+
+\func ldistr (n m k : Nat) : n * (m + k) = n * m + n * k => {?}
+
+\func rdistr (n m k : Nat) : (m + k) * n = m * n + k * n => {?}
+
+-- 11. Докажите, что reverse (reverse xs) = xs, где reverse определен через ++.
+
+\data List (A : \Type) | nil | cons A (List A)
+
+\func \infixl 4 ++ {A : \Type} (xs ys : List A) : List A \elim xs
+  | nil => ys
+  | cons x xs => cons x (xs ++ ys)
+
+\func reverse {A : \Type} (xs : List A) : List A
+  | nil => nil
+  | cons x xs => reverse xs ++ cons x nil
+
+-- Это утверждение будет полезно для доказательства.
+\func reverse++ {A : \Type} (xs ys : List A) : reverse (xs ++ ys) = reverse ys ++ reverse xs => {?}
+
+\func reverse-isInvolutive {A : \Type} (xs : List A) : reverse (reverse xs) = xs => {?}
