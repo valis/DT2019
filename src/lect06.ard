@@ -1,0 +1,182 @@
+\import Utils
+
+-- 1. Оператор J.
+
+-- Оператор J является обобщением transport.
+-- Если transport -- это независимый элиминатор, то J -- его зависимая версия.
+
+-- Можно сравнить с элиминаторами для Nat.
+{-
+-- Независимая версия:
+\func Nat-rec (B : \Type)
+    (z : B)
+    (s : Nat -> B -> B)
+    (n : Nat)
+    : B \elim n
+    | 0 => z
+    | suc n => s n (Nat-rec B z s n)
+
+-- Зависимая версия:
+\func Nat-elim (B : Nat -> \Type)
+    (z : B 0)
+    (s : \Pi (k : Nat) -> B k -> B (suc k))
+    (n : Nat)
+    : B n \elim n
+    | 0 => z
+    | suc n => s n (Nat-elim B z s n)
+-}
+
+-- Независимая версия:
+\func transport'
+  {A : \Type}
+  (B : A -> \Type)
+  {a a' : A} (p : a = a')
+  (b : B a)
+  : B a'
+  => coe (\lam i => B (p @ i)) b right
+
+-- Зависимая версия:
+\func J
+  {A : \Type} {a : A}
+  (B : \Pi (a' : A) -> a = a' -> \Type)
+  (b : B a idp)
+  {a' : A} (p : a = a')
+  : B a' p
+  -- Его определение пока не важно.
+  => coe (\lam i => B (p @ i) (psqueeze p i)) b right
+  \where {
+    \func psqueeze  {A : \Type} {a a' : A} (p : a = a') (i : I) : a = p @ i => path (\lam j => p @ I.squeeze i j)
+  }
+
+-- Напоминание как выглядит элиминатор для Unit.
+\data Unit | unit
+
+\func Unit-elim
+  (B : Unit -> \Type)
+  (b : B unit)
+  (p : Unit)
+  : B p
+\elim p
+  | unit => b
+
+-- Если переписать тип B в некаррированом виде, то получится следующая версия того же оператора:
+-- Этот элиминатор в точности является элиминатором для Unit.
+-- Таким образом, J говорит, что в типе \Sigma (a' : A) (a = a') ровно один элемент.
+\func J'
+  {A : \Type} {a : A}
+  (B : (\Sigma (a' : A) (a = a')) -> \Type)
+  (b : B (a, idp))
+  (p : \Sigma (a' : A) (a = a'))
+  : B p
+  => {?}
+
+-- Это утверждение не типизируется.
+-- \func =-unique' {A : \Type} {a a' : A} (p : a = a') : p = idp => {?}
+
+-- Это утверждение типизируется, но не верно, т.е. в типе a = a может быть больше одного элемента.
+-- \func =-unique {A : \Type} {a : A} (p : a = a) : p = idp => {?}
+
+-- J говорит, что для определения функции над a = a' достаточно определить ее для idp.
+-- При этом a' должен варьироваться вместе с a'.
+-- Если мы определим версию J, в которой a' всегда равно a, то мы получим оператор K:
+{-
+\func K {A : \Type} {a : A} (B : a = a -> \Type)
+    (b : B idp)
+    (p : a = a) : B p => {?}
+-}
+-- Этот оператор эквивалентен =-unique.
+-- Следовательно его невозможно доказать.
+-- Его можно добавить как аксиому, но мы не будем этого делать.
+-- Мы будем обсуждать его подробнее позже.
+
+-- 2. Ассоциативность ++ для векторов.
+
+\open Nat
+
+\func +-assoc (n m k : Nat) : n + (m + k) = (n + m) + k \elim k
+  | 0 => idp
+  | suc k => pmap suc (+-assoc n m k)
+
+-- Ассоциативность для v++ даже сформулировать сложно, так как у (xs v++ ys) v++ zs и xs v++ (ys v++ zs) разные типы: Vec A (k + (m + n)) и Vec A ((k + m) + n).
+-- Это можно поправить при помощи transport, так как он позволяет любой элемент Vec A x превратить в элемент Vec A y, если x и y равны.
+\func v++-assoc {A : \Type} {n m k : Nat}
+                (xs : Vec A n) (ys : Vec A m) (zs : Vec A k)
+  : transport (Vec A) (+-assoc k m n) ((xs v++ ys) v++ zs) = xs v++ (ys v++ zs)
+  \elim n, xs
+    | 0, vnil => idp
+    | suc n, vcons x xs => transport-vcons x ((xs v++ ys) v++ zs) (+-assoc k m n)
+                           *> pmap (vcons x) (v++-assoc xs ys zs)
+    \where
+      -- transport коммутирует с vcons
+      \func transport-vcons {A : \Type} {n m : Nat}
+                           (x : A) (xs : Vec A n) (p : n = m)
+        : transport (Vec A) (pmap suc p) (vcons x xs) =
+          vcons x (transport (Vec A) p xs)
+        => J (\lam m p =>
+                transport (Vec A) (pmap suc p) (vcons x xs) =
+                vcons x (transport (Vec A) p xs))
+             idp
+             p
+
+{-
+\func v++-assoc' {A : \Type} {n m k : Nat}
+                (xs : Vec A n) (ys : Vec A m) (zs : Vec A k)
+  : (xs v++ ys) v++ zs = transport (Vec A) (+-assoc' k m n) (xs v++ (ys v++ zs)) \elim n, xs
+  | 0, vnil => idp
+  | suc n, vcons x xs =>
+        pmap (vcons x) (v++-assoc' xs ys zs) *> -- Чтобы доказать это утверждение, мы сначала используем индукционную гипотезу.
+                                               -- После этого нам нужно доказать, что
+                                               -- vcons x (transport (Vec A) (+-assoc' k m n) (xs v++ (ys v++ zs))) =
+                                               -- transport (Vec A) (pmap suc (+-assoc' k m n)) (vcons x (xs v++ (ys v++ zs))
+                                               -- Мы обобщаем это утверждение и доказываем его не только для +-assoc' k m n, а для любых e : Nat и p : k + m + n = e.
+                                               -- Первым аргументом J передается это обобщенное утверждение.
+                                               -- После этого остается только доказать его для случае p == idp.
+                                               -- А в этом случае это верно по рефлексивности (это второй аргумент J).
+        J (\lam e (p : k + m + n = e) =>
+                    vcons x (transport (Vec A) p (xs v++ (ys v++ zs))) =
+                    transport (Vec A) (pmap suc p) (vcons x (xs v++ (ys v++ zs))))
+          idp
+          (+-assoc' k m n)
+
+\func +-assoc' (n m k : Nat) : (n + m) + k = n + (m + k) \elim k
+  | 0 => idp
+  | suc k => pmap suc (+-assoc' n m k)
+-}
+
+-- 3. Предикаты.
+
+-- Есть несколько способов определять предикаты над некоторым типом A:
+-- * Выразить из через уже существующие (например равенство) и различные логические связки. Например, предикат isEven можно выразить как \lam n => \Sigma (k : Nat) (n = 2 * k).
+-- * Рекурсивно. Этот способ работает только если A -- тип данных.
+-- * Индуктивно.
+
+-- Определение <= через равенство.
+\func lessOrEq (n m : Nat) => \Sigma (k : Nat) (n + k = m)
+
+-- Рекурсивное определение предиката <=
+\func lessOrEq' (n m : Nat) : \Type
+  | 0, _ => \Sigma
+  | suc n, 0 => Empty
+  | suc n, suc m => lessOrEq' n m
+
+-- Первое индуктивное определение <=
+\data LessOrEq (n m : Nat) \with
+  | 0, _ => z<=_
+  | suc n, suc m => s<=s (LessOrEq n m)
+
+-- \func test11 : LessOrEq 0 100 => z<=n
+-- \func test12 : LessOrEq 3 67 => s<=s (s<=s (s<=s z<=n))
+-- \func test10 : LessOrEq 1 0 => ....
+
+-- Один и тот же предикат можно определить индуктивно различными способами.
+-- Когда мы хотим задать предикат индуктивно, нам нужно просто написать набор правил, которые верны для данного предиката и при этом пораждают его.
+-- Например, в LessOrEq у нас два правила: 0 <= m для любого m и, если n <= m, то suc n <= suc m. Любое неравенство можно получить из этих двух правил.
+
+-- Но это не единственный набор правил, который пораждает <=.
+-- Например, мы можем взять следующий набор: n <= n для всех n и, если n <= m, то n <= suc m.
+-- Этот набор реализован в LessOrEq''.
+
+-- Второе индуктивное определение <=
+\data LessOrEq' (n m : Nat) \elim m
+  | suc m => <=-step (LessOrEq' n m)
+  | m => <=-refl (n = m)
