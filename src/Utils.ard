@@ -41,6 +41,10 @@
   | true => true
   | false => y
 
+\func T (b : Bool) : \Type
+  | true => \Sigma
+  | false => Empty
+
 -- List
 
 \data List (A : \Type) | nil | cons A (List A)
