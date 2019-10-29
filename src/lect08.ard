@@ -24,10 +24,15 @@
 
 -- foo лучше доказать, просто обобщив утверждение, но мы докажем ее через \case, чтобы продемонстировать возможности этой конструкции.
 \func foo {A : \Type} (p : A -> Bool) (a : A) : p a = not (not (p a)) =>
-   \case p a \as b \return b = not (not b) \with {
-     | true => idp
-     | false => idp
-   }
+   -- Перед \with мы можем написать \return <expr>, где <expr> -- это тип, который возвращается из \case.
+   -- После выражения, на котором мы паттерн матчимся, можно написать \as b, где b -- это переменная, которая будет связана в этой конструкции.
+   -- Эту переменную можно использовать в выражении, которое идет после \return.
+   -- Идея в том, что возвращаемый тип может зависеть от выражения, на котором мы паттерн матчимся.
+   -- Эту конструкцию можно использовать, чтобы эту зависимость явно указать.
+  \case p a \as b \return b = not (not b) \with {
+    | true => idp -- В каждом отдельном случае нам нужно будет вернуть указанный после \return тип, в котором b заменено на соответствующий паттерн. Например, здесь нужно вернуть значение типа true = not (not true).
+    | false => idp -- А здесь мы возвращаем значение типа false = not (not false).
+  }
 
 -- foo можно переписать через helper.
 \func foo' {A : \Type} (p : A -> Bool) (a : A) : p a = not (not (p a)) =>
@@ -92,8 +97,8 @@
     -- Мы можем явно указывать не только тип возвращаемого значения, но и типы выражений, на которых мы паттерн матчимся.
     -- И в них также можно использовать переменные, связанные в \as.
     \case p a \as b, idp : b = p a \with {
-      | true, q => transport B q pt
-      | false, q => transport B q pf
+      | true, q => transport B q pt -- Здесь q : true = p a
+      | false, q => transport B q pf -- Здесь q : false = p a
     }
 
 -- Перепишем baz через вспомогательную функцию.
@@ -101,8 +106,8 @@
   helper B p a pt pf (p a) idp
   \where
     \func helper {A : \Type} (B : Bool -> \Type) (p : A -> Bool) (a : A) (pt : B true) (pf : B false) (b : Bool) (q : b = p a) : B (p a) \elim b
-      | true => transport B q pt
-      | false => transport B q pf
+      | true => transport B q pt -- Здесь q : true = p a
+      | false => transport B q pf -- Здесь q : false = p a
 
 -- 5. Еще один пример.
 
