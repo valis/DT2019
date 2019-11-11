@@ -1,0 +1,226 @@
+\import Utils
+\open Nat \hiding (<=)
+
+-- 1. Принципы индукции.
+
+-- Элиминатор для рекурсивного типа данных -- это просто принцип индукции для него.
+-- Мы можем определять свои принципы индукции, которые удобнее использовать, чем стандартные.
+-- Например, для натуральных чисел мы можем определить принцип индукции, который позволяет использовать индукционную гипотезу для любого числа, меньшего данного, а не только для числа, меньшего на 1.
+\func Nat-ind
+  (E : Nat -> \Type)
+  (r : \Pi (n : Nat) -> (\Pi (k : Nat) -> k < n -> E k) -> E n)
+  (n : Nat) : E n => aux E r n (suc n) (suc<=suc <=-refl)
+  \where
+    \func aux
+      (E : Nat -> \Type)
+      (r : \Pi (n : Nat) -> (\Pi (k : Nat) -> k < n -> E k) -> E n)
+      (m n : Nat) (p : m < n) : E m \elim n, p
+      | suc n, suc<=suc m<=n => r m (\lam k k<m => aux E r k n (<=-trans k<m m<=n))
+
+-- 2. Индукция-рекурсия
+
+-- Рекурсия-рекурсия -- это принцип, позволяющий определять взаимно рекурсивные функции.
+-- Пример: функции isEven и isOdd.
+\func isEven (n : Nat) : Bool
+  | 0 => true
+  | suc n => isOdd n
+
+\func isOdd (n : Nat) : Bool
+  | 0 => false
+  | suc n => isEven n
+
+-- Индукция-индукция -- это принцип, позволяющий определять взаимно рекурсивные типы данных.
+-- Когда мы определяем взаимно рекурсивный тип данных, нужно явно указывать его тип.
+-- Пример: типы IsEven и IsOdd.
+\data IsEven (n : Nat) : \Type \with
+  | 0 => zero-isEven
+  | suc n => suc-isEven (IsOdd n)
+
+\data IsOdd (n : Nat) : \Type \with
+  | suc n => suc-isOdd (IsEven n)
+
+-- Индукция-рекурсия -- это принцип, позволяющий определять тип данных, взаимно рекурсивный с функцией.
+-- Мы увидим пример такого определения ниже.
+
+-- 3. Вселенные.
+
+-- \Type0 -- это тип, элементы которого -- это малые типы.
+-- Такой тип называется вселенной.
+-- Мы можем определить свою вселенную, состоящую только из определенного набора типов.
+
+\data Type
+  | nat
+  | list Type
+  | arr Type Type
+
+-- Мы должны еще определить функцию, которая переводит элементы Type в настоящие типы.
+\func El (t : Type) : \Type0 \elim t
+  | nat => Nat
+  | list t => List (El t)
+  | arr t1 t2 => El t1 -> El t2
+
+\func idc (t : Type) (x : El t) : El t => x
+
+-- \func Arr (A B : \Type) => A -> B
+
+-- \func Pi (A : \Type) (B : A -> \Type) => \Pi (x : A) -> B x
+
+-- Если мы хотим определить вселенную, в которой у нас есть заисимые типы, то такое определение должно быть индуктивно-рекурсивным.
+\data Type' : \Set0
+  | nat'
+  | list' Type'
+  | pi' (a : Type') (El' a -> Type')
+
+\func El' (t : Type') : \Set0 \elim t
+  | nat' => Nat
+  | list' t => List (El' t)
+  | pi' t1 t2 => \Pi (a : El' t1) -> El' (t2 a)
+
+-- 4. Полнота спецификации.
+
+-- Спецификация для некоторого значения a типа A -- это просто предикат вида P : A -> \Type.
+-- То есть спецификация -- это просто свойство элемента, которое мы хотим про него доказать.
+
+-- Спецификация корректна, если верно P a.
+-- Спецификация полна, если P x влечет x = a для любого x : A.
+
+-- Например, пусть у нас есть функция, вычисляющая факториал fac : Nat -> Nat.
+-- P1 -- корретная спецификация для fac, но не полная.
+-- \func P1 (f : Nat -> Nat) => f 3 = 6
+-- P2 -- полная, но не корректная
+-- \func P2 (f : Nat -> Nat) => Empty
+-- P3 -- полная и корректная спецификация для fac.
+-- \func P3 (f : Nat -> Nat) => \Sigma (f 0 = 1) (\Pi (n : Nat) -> f (suc n) = suc n * f n)
+
+-- Полная и корректная спецификация для функции сортировки:
+-- \func P (f : List A -> List A) => \Pi (xs : List A) -> \Sigma (isSorted (f xs)) (isPerm (f xs) xs)
+-- где isSorted xs верно тогда и только тогда, когда список xs отсортирован, а isPerm xs ys верно тогда и только список xs является перестановкой списка ys.
+
+-- Разумеется, мы хотим, чтобы спецификация была, по крайней мере, корректной.
+-- Мы можем не требовать полноты, если полную спецификацию слишком сложно проверить, и нам достаточно истинности частичной спецификации.
+-- Тем не менее полезно понимать когда спецификация является полной.
+
+-- Есть простое необходимое (и достаточное для корректных спецификаций) условие полноты, которое не зависит от элемента, для которого задается спецификация:
+-- \Pi (x y : A) -> P x -> P y -> x = y
+-- То есть должно существовать не более одного элемента, на котором предикат верен.
+
+-- 5. Корректность сортировки.
+
+\func sort {A : TotalPreorder} (xs : List A) : List A
+  | nil => nil
+  | cons a xs => insert a (sort xs)
+  \where
+    \func insert {A : TotalPreorder} (a : A) (xs : List A) : List A \elim xs
+      | nil => cons a nil
+      | cons x xs => \case totality x a \with {
+        | inl _ => cons x (insert a xs)
+        | inr _ => cons a (cons x xs)
+      }
+
+\data Perm {A : \Type} (xs ys : List A) \elim xs, ys
+  | nil, nil => perm-nil
+  | cons x xs, cons y ys => perm-cons (x = y) (Perm xs ys)
+  | xs, ys => perm-trans {zs : List A} (Perm xs zs) (Perm zs ys)
+  | cons x (cons x' xs), cons y (cons y' ys) => perm-perm (x = y') (x' = y) (xs = ys)
+
+\func perm-refl {A : \Type} {xs : List A} : Perm xs xs \elim xs
+  | nil => perm-nil
+  | cons a l => perm-cons idp perm-refl
+
+\func sort-perm {A : TotalPreorder} (xs : List A) : Perm xs (sort xs) \elim xs
+  | nil => perm-nil
+  | cons a l => perm-trans (perm-cons idp (sort-perm l)) (insert-perm a (sort l))
+  \where
+    \func insert-perm {A : TotalPreorder} (a : A) (xs : List A) : Perm (cons a xs) (sort.insert a xs) \elim xs
+      | nil => perm-cons idp perm-nil
+      | cons b l => \case totality b a \as r \return
+                                              Perm (cons a (cons b l)) (\case r \with {
+                                                | inl _ => cons b (sort.insert a l)
+                                                | inr _ => cons a (cons b l)
+                                              }) \with {
+        | inl b<=a => perm-trans (perm-perm idp idp idp) (perm-cons idp (insert-perm a l))
+        | inr a<=b => perm-refl
+      }
+
+\func head {A : \Type} (def : A) (xs : List A) : A \elim xs
+  | nil => def
+  | cons a _ => a
+
+\data IsSorted {A : Preorder} (xs : List A) \elim xs
+  | nil => nil-sorted
+  | cons x xs => cons-sorted (x <= head x xs) (IsSorted xs)
+
+\func sort-sorted {A : TotalPreorder} (xs : List A) : IsSorted (sort xs) \elim xs
+  | nil => nil-sorted
+  | cons a l => insert-sorted a (sort-sorted l)
+  \where {
+    \func insert-lem {A : TotalPreorder} (a x : A) (l : List A) (a<=x : a <= x) (a<=l : a <= head a l) : a <= head a (sort.insert x l) \elim l
+      | nil => a<=x
+      | cons b l => \case totality b x \as r \return
+                                              a <= head a (\case r \with {
+                                                | inl _ => cons b (sort.insert x l)
+                                                | inr _ => cons x (cons b l)
+                                              }) \with {
+        | inl _ => a<=l
+        | inr _ => a<=x
+      }
+
+    \func insert-sorted {A : TotalPreorder} (x : A) {xs : List A} (xs-sorted : IsSorted xs) : IsSorted (sort.insert x xs) \elim xs
+      | nil => cons-sorted <=-refl nil-sorted
+      | cons a l => \case totality a x \as r \return
+                                              IsSorted (\case r \with {
+                                                | inl _ => cons a (sort.insert x l)
+                                                | inr _ => cons x (cons a l)
+                                              }) \with {
+        | inl a<=x => \case xs-sorted \with {
+          | cons-sorted a<=l l-sorted => cons-sorted (insert-lem a x l a<=x a<=l) (insert-sorted x l-sorted)
+        }
+        | inr x<=a => cons-sorted x<=a xs-sorted
+      }
+  }
+
+{- Предикат IsSorted можно определить по другому, но доказательство sort-sorted тогда будет сложнее.
+\data IsSorted {A : Preorder} (xs : List A) \with
+  | nil => nil-sorted
+  | cons _ nil => single-sorted
+  | cons x (cons y _ \as xs) => cons-sorted (x <= y) (IsSorted xs)
+
+\func sort-sorted {A : TotalPreorder} (xs : List A) : IsSorted (sort xs)
+  | nil => nil-sorted
+  | cons a l => insert-sorted a (sort l) (sort-sorted l)
+  \where
+    \func insert-sorted {A : TotalPreorder} (a : A) (xs : List A) (xs-sorted : IsSorted xs) : IsSorted (sort.insert a xs) \elim xs, xs-sorted
+      | nil, _ => single-sorted
+      | cons b nil, _ =>
+        \case totality b a \as r \return
+                                  IsSorted (\case r \with {
+                                    | inl _ => cons b (cons a nil)
+                                    | inr _ => cons a (cons b nil)
+                                  }) \with {
+          | inl b<=a => cons-sorted b<=a single-sorted
+          | inr a<=b => cons-sorted a<=b single-sorted
+        }
+      | cons b (cons c l \as l'), cons-sorted b<=c l'-sorted =>
+        \case totality b a \as r \return
+                                  IsSorted (\case r \with {
+                                    | inl _ => cons b (sort.insert a l')
+                                    | inr _ => cons a (cons b l')
+                                  }) \with {
+          | inl b<=a =>
+            \case totality c a \as r, idp : totality c a = r \return
+                                      IsSorted (cons b (\case r \with {
+                                        | inl _ => cons c (sort.insert a l)
+                                        | inr _ => cons a l'
+                                      })) \with {
+              | inl c<=a, p => cons-sorted b<=c (transport IsSorted (
+                  pmap (\lam t =>
+                          \case t \with {
+                            | inl _ => cons c (sort.insert a l)
+                            | inr _ => cons a (cons c l)
+                          }
+                       ) p) (insert-sorted a l' l'-sorted))
+              | inr a<=c, _ => cons-sorted b<=a (cons-sorted a<=c l'-sorted)
+            }
+          | inr a<=b => cons-sorted a<=b (cons-sorted b<=c l'-sorted)
+        }
+-}
