@@ -1,0 +1,164 @@
+\import Utils
+\import lect06
+
+-- 1. Подмножества, инъективные функции.
+
+-- В теории множеств мы можем использовать подмножества:
+-- { x : A | P x } <= A
+-- Любой элемент подмножества буквально является элементом исходного множества.
+
+-- Другой способ -- это вместо подмножеств использовать инъективные функции.
+-- В теории типов нам доступен только второй способ.
+-- Например, подмножество выше превращается в следующую функцию:
+-- \lam t => t.1 : \Sigma (x : A) (P x) -> A
+-- Является ли данная функция инъективной?
+
+\func isEven (n : Nat) : Bool
+  | 0 => true
+  | 1 => false
+  | suc (suc n) => isEven n
+
+-- Рассмотрим частный случай этой конструкции.
+-- { n : Nat | T (isEven n) } -- теоретико-множественная нотация
+\func Even => \Sigma (n : Nat) (T (isEven n)) -- в теории типов записывается так
+
+-- Функция вложения множества четных чисел в множество всех натуральных чисел.
+\func Even-inc (e : Even) => e.1
+
+\func isInj {A B : \Type} (f : A -> B) =>
+   \Pi (x y : A) -> f x = f y -> x = y
+-- Это эквивалентно следующему утверждению только если есть аксиома исключенного третьего.
+-- \Pi (x y : A) -> Not (x = y) -> Not (f x = f y)
+
+-- Чтобы доказать, что пары t1 и t2 равны, достаточно доказать, что их компоненты равны.
+\func prodEq {A B : \Type} (t1 t2 : \Sigma A B) (p : t1.1 = t2.1) (q : t1.2 = t2.2)
+  : t1 = t2
+  => path (\lam i => (p @ i, q @ i))
+
+-- Обобщение предыдущего утверждения для зависимых пар.
+\func sigmaEq {A : \Type} (B : A -> \Type) (t1 t2 : \Sigma (x : A) (B x))
+  -- t1.2 : B t1.1
+  -- t2.2 : B t2.1
+              (p : t1.1 = t2.1) (q : transport B p t1.2 = t2.2)
+  : t1 = t2
+  {-
+  \elim t1,t2,p,q
+  | (a1,b1), (a2,b2), idp, idp => idp
+  -}
+  => J (\lam a' p' => \Pi (b' : B a') (q' : transport B p' t1.2 = b') -> t1 = (a',b'))
+       (\lam b' q' => pmap (\lam b'' => ((t1.1,b'') : \Sigma (x : A) (B x))) q')
+       p t2.2 q
+
+-- Любые два элемента типа T b равны.
+\func T-lem {b : Bool} {x y : T b} : x = y
+  | {true} => idp
+
+-- Доказательство того, что четные числа вкладываются в натуральные.
+\func Even-inc-isInj : isInj Even-inc =>
+  \lam x y p => sigmaEq (\lam n => T (isEven n)) x y p T-lem
+
+-- 2. Еще один пример.
+
+\func mod3 (n : Nat) : Nat
+  | 0 => 0
+  | 1 => 1
+  | 2 => 2
+  | suc (suc (suc n)) => mod3 n
+
+\func mod5 (n : Nat) : Nat
+  | 0 => 0
+  | 1 => 1
+  | 2 => 2
+  | 3 => 3
+  | 4 => 4
+  | suc (suc (suc (suc (suc n)))) => mod5 n
+
+-- Определим множество чисел, которые делятся на 3 или на 5.
+\func MultipleOf3Or5 => \Sigma (n : Nat) ((mod3 n = 0) `Either` (mod5 n = 0))
+
+-- Функция, отображающая это множество в множество натуральных чисел.
+\func Mul-inc (m : MultipleOf3Or5) => m.1
+
+-- Она не является инъективной.
+-- \func Mul-inc-isInj (p : isInj Mul-inc) : Empty => {?}
+-- Проблема в том, что у нас может быть несколько различных доказательств того факта, что число делится на 3 или на 5.
+
+-- 3. Утверждения
+
+-- Проблемы в предыдущем примере не возникло, если бы тип, определяющий подмножество, был утверждением, то есть любые его два элемента были бы равны.
+\func isProp (A : \Type) => \Pi (x y : A) -> x = y
+
+-- Пример не утверждения.
+\func BoolIsNotProp (p : isProp Bool) : Empty => transport T (p true false) ()
+
+-- 4. Какие предикаты являются настоящими предикатами (то есть возвращают утверждения)?
+--    ⊤, ⊥, ∧, ∨, →, ∀, ∃, =, рекурсвиные предикаты, индуктивные предикаты.
+
+-- Пустой тип является утверждением.
+\func Empty-isProp : isProp Empty => \lam x y => absurd x
+
+-- Одноэлементный тип является утверждением.
+\func Unit => \Sigma
+
+\func Unit-isProp : isProp Unit => \lam x y => idp
+
+-- Если A и B являются утверждениями, то их произведение (конъюнкция) тоже является утверждением.
+\func Sigma-isProp {A B : \Type} (pA : isProp A) (pB : isProp B)
+  : isProp (\Sigma A B) => \lam p q => prodEq p q (pA p.1 q.1) (pB p.2 q.2)
+
+-- Это не верно для сумм типов, то есть у нас нет (пока) дизъюнкций.
+-- \func Either-isProp {A B : \Type} (pA : isProp A) (pB : isProp B)
+--   : isProp (Either A B) =>
+--   {?}
+
+\func funcExt {A : \Type} (B : A -> \Type) (f g : \Pi (x : A) -> B x)
+              (p : \Pi (x : A) -> f x = g x) : f = g =>
+  path (\lam i x => p x @ i)
+
+-- У нас есть импликации.
+\func Impl-isProp {A B : \Type} {- (pA : isProp A) -} (pB : isProp B) : isProp (A -> B)
+  => \lam f g =>
+      -- path (\lam i x => pB (f x) (g x) @ i)
+      funcExt (\lam _ => B) f g (\lam x => pB (f x) (g x))
+
+-- И квантор всеобщности.
+\func forall-isProp {A : \Type} (B : A -> \Type) (pB : \Pi (x : A) -> isProp (B x))
+  : isProp (\Pi (x : A) -> B x)
+  => \lam f g => funcExt B f g (\lam x => pB x (f x) (g x))
+
+{- Но квантора существования у нас (пока) нет.
+\func exists-isProp {A : \Type} (B : A -> \Type)
+                    (pB : \Pi (x : A) -> isProp (B x))
+  : isProp (\Sigma (x : A) (B x)) =>
+  {?}
+-}
+
+-- Равенство тоже в общем случае не является утверждением.
+-- \func equality-isProp {A : \Type} (a a' : A) : isProp (a = a') => {?}
+
+-- Но для многих типов это верно.
+-- Мы будем называть такие типы множествами.
+-- Позже мы увидим, что большинство типов являются множествами.
+\func isSet (A : \Type) => \Pi (a a' : A) -> isProp (a = a')
+
+-- По определению равенство между элементами множества является утверждением.
+\func equality-isProp {A : \Type} (p : isSet A) (a a' : A) : isProp (a = a') => p a a'
+
+{- Рекурсивно определенный предикат является утверждением, если ... являются таковыми
+\func pred (n : Nat) : \Type
+  | 0 => ...
+  | suc n => ...
+-}
+
+-- Индуктивно определенный предикат может быть утверждением, а может и не быть им.
+
+-- Является утверждением
+\data \infix 4 <=' (n m : Nat) \with
+  | 0, _ => zero<=_
+  | suc n, suc m => suc<=suc (n <=' m)
+
+-- Не является утверждением
+\data \infix 4 <='' (n m : Nat) \elim m
+  | m => <=-refl (n = m)
+  | 1 => zero<=one (n = 0)
+  | suc m => <=-step (n <='' m)
