@@ -40,11 +40,11 @@
 
 -- 5. Докажите, что LessOrEq и LessOrEq' являются предикатами.
 
-\data LessOrEq (n m : Nat) \with
+\data LessOrEq (n m : Nat) : \Set0 \with
   | 0, m => z<=n
   | suc n, suc m => s<=s (LessOrEq n m)
 
-\data LessOrEq' (n m : Nat) \elim m
+\data LessOrEq' (n m : Nat) : \Set0 \elim m
   | suc m => <=-step (LessOrEq' n m)
   | m => <=-refl (n = m)
 
