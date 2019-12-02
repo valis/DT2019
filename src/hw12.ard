@@ -1,8 +1,9 @@
+\import Utils
 \import lect12
 
 -- 1. Определите функцию negPred : Int -> Int такую, что negPred x = x, если x > 0, и negPred x = x - 1, если x <= 0.
 
-\func negPred (x : Int) : Nat => {?}
+\func negPred (x : Int) : Int => {?}
 
 -- 2. Определите функции сложения и умножения для Int.
 
@@ -26,8 +27,6 @@
 \func pred-is-sur : isSur pred => {?}
 
 -- 5. Докажите, что функция suc не сюръективна.
-
-\data Empty
 
 \func suc-is-not-sur (p : isSur suc) : Empty => {?}
 
