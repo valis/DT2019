@@ -84,7 +84,7 @@
 -- Чтобы доказать, что два утверждения равны, достаточно доказать, что одно влечет второе, и второе влечет первое.
 
 \func propExt (A B : \Prop) (f : A -> B) (g : B -> A) : A = B =>
-  equivalence=>equality A B (f, g, \lam x => Path.inProp _ _, \lam y => Path.inProp _ _)
+  equivalence=>equality A B (f, g, \lam x => idp, \lam y => idp)
 
 -- 4. \Set не является множеством.
 
@@ -121,27 +121,42 @@
 -- Например, idp является единицей справа и слева для *.
 \func idp-right {A : \Type} {x y : A} (p : x = y) : p *> idp = p => idp
 
-\func idp-left {A : \Type} {x y : A} (p : x = y) : idp *> p = p \elim p
-  | idp => idp
+\func idp-left {A : \Type} {x y : A} (p : x = y) : idp *> p = p
+  => J (\lam y' p' => idp *> p' = p') idp p
+  {- \elim p
+     | idp => idp
+  -}
 
 -- * ассоциативна.
 \func *-assoc {A : \Type} {x y z w : A} (p : x = y) (q : y = z) (r : z = w)
-  : (p *> q) *> r = p *> (q *> r) \elim r
-  | idp => idp
+  : (p *> q) *> r = p *> (q *> r)
+  => J (\lam w' r' => (p *> q) *> r' = p *> (q *> r')) idp r
+  {- \elim r
+     | idp => idp
+  -}
 
 -- sym возвращает обратный элемент.
-\func sym-left {A : \Type} {x y : A} (p : x = y) : sym p *> p = idp \elim p
-  | idp => idp
+\func sym-left {A : \Type} {x y : A} (p : x = y) : sym p *> p = idp
+  => J (\lam y' p' => sym p' *> p' = idp) idp p
+  {- \elim p
+     | idp => idp
+  -}
 
-\func sym-right {A : \Type} {x y : A} (p : x = y) : p *> sym p = idp \elim p
-  | idp => idp
+\func sym-right {A : \Type} {x y : A} (p : x = y) : p *> sym p = idp
+  => J (\lam y' p' => p' *> sym p' = idp) idp p
+  {- \elim p
+     | idp => idp
+  -}
 
 -- То есть * похожа на операцию в группе.
 -- Мы можем доказать различные равенства, верные в группах.
 -- Например, мы можем доказать, что можно сокращать слева на элемент.
 \func cancelLeft {A : \Type} {x y z : A}
-                  (p : x = y) (q r : y = z) (s : p *> q = p *> r) : q = r \elim p
-  | idp => sym (idp-left q) *> s *> idp-left r
+                  (p : x = y) (q r : y = z) (s : p *> q = p *> r) : q = r
+  => sym (idp-left q) *> pmap (`*> q) (sym (sym-left p)) *> *-assoc (sym p) p q *> pmap (sym p *>) s *> sym (*-assoc (sym p) p r) *> pmap (`*> r) (sym-left p) *> idp-left r
+  {- \elim p
+     | idp => sym (idp-left q) *> s *> idp-left r
+  -}
 
 -- 6. Утверждения являются множествами.
 
