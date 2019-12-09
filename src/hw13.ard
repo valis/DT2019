@@ -1,0 +1,23 @@
+\import lect13
+\import Utils
+
+-- 1. Докажите, что тип утверждений является множеством.
+
+\func prop-isSet : isSet \Prop => {?}
+
+-- 2. Докажите, что (Bool = Bool) = Bool.
+
+\func BoolAut : (Bool = Bool) = Bool => {?}
+
+-- 3. Докажите, что (n+m)-элементное множество равно размеченному объединению n- и m-элементных множеств.
+
+-- 4. Тип X называется инъективным, если для любой функции f : A -> X и любой инъекции i : A -> B сущесвует функция l : B -> X такая, что l `o` i = f.
+--    Докажите, что \Prop инъективен.
+
+\func isInj {A B : \Type} (f : A -> B) => \Pi (x y : A) -> f x = f y -> x = y
+
+\func \fixr 9 o {A B C : \Type} (g : B -> C) (f : A -> B) => \lam a => g (f a)
+
+\func isInjective (X : \Type) => \Pi {A B : \Type} (f : A -> X) (i : A -> B) (p : isInj i) -> \Sigma (l : B -> X) (l `o` i = f)
+
+\func Prop-isInjective : isInjective \Prop => {?}
