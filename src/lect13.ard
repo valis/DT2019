@@ -46,13 +46,13 @@
 
 -- Мы хотим не только, чтобы Equiv A B -> A = B, но и чтобы тип A = B был эквивалентен типу функций, являющимися эквивалентностями.
 -- Правило, описанное выше позволяет доказать эту эквивалентность в одну сторону.
--- Ее можно доказать и в обратную, но это доказательство я приводить не буду.
--- Так как эта аксиома потребуется в ДЗ, я приведу ее без доказательства.
+-- Ее можно доказать и в обратную (почти), но это доказательство я приводить не буду.
+-- Так как эта аксиома потребуется в ДЗ, я приведу ее без доказательства (но только для множеств, т.к. для произвольных типов ее нужно немного модифицировать).
 
-\func UA (A B : \Type) : Equiv (A = B) (Equiv A B) => (equality=>equivalence A B, equivalence=>equality A B, LRL A B, RLR A B)
+\func UA (A B : \Set) : Equiv (A = B) (Equiv A B) => (equality=>equivalence A B, equivalence=>equality A B, LRL A B, RLR A B)
   \where {
-    \func LRL (A B : \Type) (p : A = B) : equivalence=>equality A B (equality=>equivalence A B p) = p => {?}
-    \func RLR (A B : \Type) (e : Equiv A B) : equality=>equivalence A B (equivalence=>equality A B e) = e => {?}
+    \func LRL (A B : \Set) (p : A = B) : equivalence=>equality A B (equality=>equivalence A B p) = p => {?}
+    \func RLR (A B : \Set) (e : Equiv A B) : equality=>equivalence A B (equivalence=>equality A B e) = e => {?}
   }
 
 -- 2. Пример применения унивалентности.
