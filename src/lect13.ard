@@ -49,7 +49,11 @@
 -- Ее можно доказать и в обратную, но это доказательство я приводить не буду.
 -- Так как эта аксиома потребуется в ДЗ, я приведу ее без доказательства.
 
-\func UA (A B : \Type) : Equiv (A = B) (Equiv A B) => {?}
+\func UA (A B : \Type) : Equiv (A = B) (Equiv A B) => (equality=>equivalence A B, equivalence=>equality A B, LRL A B, RLR A B)
+  \where {
+    \func LRL (A B : \Type) (p : A = B) : equivalence=>equality A B (equality=>equivalence A B p) = p => {?}
+    \func RLR (A B : \Type) (e : Equiv A B) : equality=>equivalence A B (equivalence=>equality A B e) = e => {?}
+  }
 
 -- 2. Пример применения унивалентности.
 
@@ -166,20 +170,20 @@
 \func isProp (A : \Type) => \Pi (x y : A) -> x = y
 
 -- Любое утверждение является множеством.
-\func isProp=>isSet (A : \Type) (t : isProp A) : isSet A
-  => \lam x y p q => aux A t x y p *> sym (aux A t x y q)
-  \where
-    \func aux (A : \Type) (t : isProp A) (x y : A) (p : x = y)
-      : p = sym (t x x) *> t x y \elim p
-      | idp => sym (sym-left (t x x))
-{-
+\func isProp=>isSet (A : \Type) (t : isProp A) : isSet A =>
+    {-
+      \lam x y p q => aux A t x y p *> sym (aux A t x y q)
+      \where
+        \func aux (A : \Type) (t : isProp A) (x y : A) (p : x = y)
+          : p = sym (t x x) *> t x y \elim p
+          | idp => sym (sym-left (t x x))
+     -}
   -- Сначала докажем, что любой p равен t x y * inv (t y y)
   -- Это легко сделать при помощи J.
   \let f (x y : A) (p : x = y) : t x y *> sym (t y y) = p =>
           J (\lam y' p' => t x y' *> sym (t y' y') = p') (sym-right (t x x)) p
   -- Теперь можно доказать, что любые p и q равны.
   \in \lam x y p q => sym (f x y p) *> f x y q
--}
 
 -- 7. Лемма про эквивалентность равенств.
 
